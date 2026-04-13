@@ -1,0 +1,55 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "ProgressiveBlurHeader",
+  "projectDescription": "A drop-in SwiftUI component that adds sticky headers with progressive blur — like Apple Music, Photos, and App Store — where content scrolls underneath with increasing blur, never clipped.",
+  "theme": "willow",
+  "primaryColor": "#7c7c7c",
+  "lightColor": "#0a0a0a",
+  "darkColor": "#c7c7c7",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Usage & Customization",
+        "pages": [
+          "usage/basic-usage",
+          "usage/customization",
+          "usage/important-rules"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/api",
+          "reference/ios26-comparison",
+          "reference/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Drop-in SwiftUI component with a single-line integration",
+    "Progressive blur using Apple's own private API (via VariableBlur)",
+    "Content never clipped — always visible underneath the header",
+    "Automatic header height measurement via GeometryReader and PreferenceKey",
+    "Tint overlay that adapts to light/dark mode automatically",
+    "Fully customizable: blur radius, fade extension, and tint opacity",
+    "App Store approved — uses the same blur API as Apple's own apps",
+    "iOS 16+ and Swift 5.9+ support"
+  ],
+  "publicApiSurface": [
+    "StickyBlurHeader<Header: View, Content: View>: View",
+    "init(maxBlurRadius: CGFloat = 5, fadeExtension: CGFloat = 64, tintOpacityTop: Double = 0.7, tintOpacityMiddle: Double = 0.5, header: () -> Header, content: () -> Content)",
+    "maxBlurRadius: CGFloat — Maximum blur intensity at the top edge (default: 5)",
+    "fadeExtension: CGFloat — How far blur extends below the header in points (default: 64)",
+    "tintOpacityTop: Double — Tint darkness at the very top behind Dynamic Island (default: 0.7)",
+    "tintOpacityMiddle: Double — Tint darkness at the header's vertical center (default: 0.5)"
+  ]
+}

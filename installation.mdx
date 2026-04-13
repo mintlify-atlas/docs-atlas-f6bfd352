@@ -1,0 +1,70 @@
+---
+title: "Add ProgressiveBlurHeader with Swift Package Manager"
+description: "Add ProgressiveBlurHeader to your Xcode project or Swift package using Swift Package Manager. The VariableBlur dependency is resolved automatically."
+---
+
+ProgressiveBlurHeader is distributed exclusively through Swift Package Manager. There is no CocoaPods or Carthage release. You can add it either by editing your `Package.swift` manifest directly or through the Xcode GUI — both methods are covered below.
+
+<Note>
+  The [VariableBlur](https://github.com/nikstar/VariableBlur) package by nikstar is declared as a dependency inside ProgressiveBlurHeader's own `Package.swift`. Swift Package Manager resolves and fetches it automatically — you do not need to add it to your project separately.
+</Note>
+
+## Method 1: Package.swift
+
+If you are building a Swift package or framework, add ProgressiveBlurHeader directly to your `Package.swift` manifest.
+
+```swift Package.swift
+dependencies: [
+    .package(url: "https://github.com/dominikmartn/ProgressiveBlurHeader", branch: "main"),
+],
+```
+
+Then add `"ProgressiveBlurHeader"` to your target's dependencies:
+
+```swift Package.swift
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: ["ProgressiveBlurHeader"]
+    ),
+]
+```
+
+## Method 2: Xcode GUI
+
+For standard iOS app projects, use the Xcode Add Package Dependencies dialog.
+
+<Steps>
+  <Step title="Open Add Package Dependencies">
+    In Xcode, open your project, then go to **File → Add Package Dependencies**.
+  </Step>
+  <Step title="Paste the repository URL">
+    In the search field at the top right, paste:
+
+    ```
+    https://github.com/dominikmartn/ProgressiveBlurHeader
+    ```
+
+    Xcode will fetch the package and display its details.
+  </Step>
+  <Step title="Choose the version rule">
+    Select **Branch** and enter `main`. ProgressiveBlurHeader does not currently publish tagged releases, so tracking the `main` branch is the recommended option.
+  </Step>
+  <Step title="Add to your target">
+    In the **Add to Target** column, select the app target you want to use ProgressiveBlurHeader in, then click **Add Package**.
+  </Step>
+</Steps>
+
+After Xcode finishes resolving, you will see both `ProgressiveBlurHeader` and `VariableBlur` listed under **Package Dependencies** in the Project Navigator.
+
+## Platform requirements
+
+| Requirement | Minimum version |
+|---|---|
+| iOS | 16.0 |
+| Swift | 5.9 |
+| Xcode | 15.0 (for swift-tools-version 5.9) |
+
+<Warning>
+  ProgressiveBlurHeader does not support macOS, tvOS, or watchOS. The `Package.swift` restricts platforms to `.iOS(.v16)`.
+</Warning>

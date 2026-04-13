@@ -1,0 +1,142 @@
+---
+title: "Customize blur radius, fade length, and tint opacity"
+description: "Tune StickyBlurHeader's four parameters — maxBlurRadius, fadeExtension, tintOpacityTop, and tintOpacityMiddle — to match your design exactly."
+---
+
+`StickyBlurHeader` ships with defaults that look good immediately, but all four visual parameters are exposed so you can match any design system. Every parameter has a clear physical meaning: blur strength at the top edge, how far the blur fades below the header, and how dark the tint sits behind the Dynamic Island and at the header's center.
+
+## All parameters at a glance
+
+```swift
+StickyBlurHeader(
+    maxBlurRadius: 5,       // Blur intensity: 5 = subtle, 10 = moderate, 20 = strong
+    fadeExtension: 64,      // How far (pt) blur extends below header
+    tintOpacityTop: 0.7,    // Tint at screen top (behind Dynamic Island)
+    tintOpacityMiddle: 0.5  // Tint at header center
+) {
+    headerView
+} content: {
+    contentView
+}
+```
+
+<Tip>
+Start with the defaults. They are calibrated to feel native on iOS 16+. Only adjust a parameter when your specific background color or header content requires it.
+</Tip>
+
+## Parameter reference
+
+<AccordionGroup>
+  <Accordion title="maxBlurRadius: CGFloat = 5">
+    Controls the maximum blur radius applied at the very top edge of the blur layer. The blur decreases progressively from this maximum down to zero at the bottom of the fade region.
+
+    | Value | Character |
+    |-------|-----------|
+    | `5`   | Subtle — barely perceptible, close to Apple's default |
+    | `10`  | Moderate — clearly visible blur, good for dark or busy backgrounds |
+    | `20`  | Strong — heavy frosted-glass effect |
+
+    The blur is rendered by `VariableBlurView` from the [VariableBlur](https://github.com/nikstar/VariableBlur) package, which uses the same private API Apple uses internally.
+  </Accordion>
+
+  <Accordion title="fadeExtension: CGFloat = 64">
+    Determines how many points below the bottom edge of the header the blur layer extends. A larger value produces a softer, longer fade; a smaller value produces a harder edge.
+
+    The total height of the blur layer is `headerHeight + fadeExtension`. The blur is strongest at the top and reaches zero opacity exactly at the bottom of this extended region, so content below the fade is never blurred.
+  </Accordion>
+
+  <Accordion title="tintOpacityTop: Double = 0.7">
+    The opacity of the tint color at the very top of the blur layer — behind the Dynamic Island and status bar area. A value of `0.7` provides enough contrast to keep status bar icons legible against most backgrounds.
+
+    The tint color itself is determined automatically by the current color scheme: white in light mode, black in dark mode.
+  </Accordion>
+
+  <Accordion title="tintOpacityMiddle: Double = 0.5">
+    The opacity of the tint at the vertical center of the header. The gradient runs from `tintOpacityTop` at position 0, through `tintOpacityMiddle` at `90pt / totalHeight`, and fades to zero at the bottom of the fade region.
+
+    Reducing this value makes the lower portion of the header more transparent, which works well when your header content has high enough contrast on its own.
+  </Accordion>
+</AccordionGroup>
+
+## Blur intensity examples
+
+<Tabs>
+  <Tab title="Subtle (default)">
+    A `maxBlurRadius` of `5` is the default. Content underneath is recognizable but softened — the same character as Apple Music's mini-player header.
+
+    ```swift
+    StickyBlurHeader(maxBlurRadius: 5) {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+    } content: {
+        contentView
+    }
+    .background(Color(.systemBackground))
+    ```
+  </Tab>
+  <Tab title="Moderate">
+    A `maxBlurRadius` of `10` is visible at a glance and works well for darker or more saturated backgrounds where the default feels too transparent.
+
+    ```swift
+    StickyBlurHeader(maxBlurRadius: 10) {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+    } content: {
+        contentView
+    }
+    .background(Color(.systemBackground))
+    .preferredColorScheme(.dark)
+    ```
+  </Tab>
+  <Tab title="Strong">
+    A `maxBlurRadius` of `20` produces a heavy frosted-glass look. Pair it with lower tint opacities so the effect doesn't feel too dense.
+
+    ```swift
+    StickyBlurHeader(
+        maxBlurRadius: 20,
+        tintOpacityTop: 0.5,
+        tintOpacityMiddle: 0.3
+    ) {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+    } content: {
+        contentView
+    }
+    .background(Color(.systemBackground))
+    ```
+  </Tab>
+</Tabs>
+
+## Light and dark mode tint
+
+The `fadeTint` color is derived automatically from `@Environment(\.colorScheme)`:
+
+```swift
+private var fadeTint: Color {
+    colorScheme == .dark ? .black : .white
+}
+```
+
+You do not need to supply separate tint colors for each mode. The `tintOpacityTop` and `tintOpacityMiddle` values apply to whichever tint color is resolved at runtime, so a single set of parameters works correctly in both appearances.
+
+<Info>
+The gradient has three stops: `tintOpacityTop` at the top, `tintOpacityMiddle` at the `90pt` mark (relative to total height), and `0` at the bottom. Adjusting `fadeExtension` moves where the middle stop lands in screen coordinates without changing the opacity values themselves.
+</Info>

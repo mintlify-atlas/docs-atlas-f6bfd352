@@ -1,0 +1,114 @@
+---
+title: "StickyBlurHeader vs iOS 26 .safeAreaBar(edge: .top)"
+description: "Compare ProgressiveBlurHeader with iOS 26's .safeAreaBar(edge: .top) — what each offers, what each lacks, and when to choose one over the other."
+---
+
+iOS 26 introduces `.safeAreaBar(edge: .top)`, a new SwiftUI modifier that adds a sticky top bar with a built-in blur effect. For many apps this is exactly the right tool. For others — those targeting older OS versions or requiring precise control over the visual treatment — ProgressiveBlurHeader fills the gap.
+
+## What each approach provides
+
+<Tabs>
+  <Tab title="iOS 26 native">
+    Apple's `.safeAreaBar(edge: .top)` is a single modifier added directly to a `ScrollView`. The system handles blur rendering, safe area management, and layout automatically.
+
+    ```swift
+    ScrollView {
+        ForEach(items) { item in
+            ItemRow(item: item)
+        }
+    }
+    .safeAreaBar(edge: .top) {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+    }
+    ```
+
+    **What you get:**
+    - Zero configuration — Apple's default blur style applied automatically
+    - Native integration with the system safe area and Dynamic Island
+    - Maintained by Apple; guaranteed forward compatibility
+
+    **What you cannot control:**
+    - Blur radius — fixed by the system, no parameter to adjust it
+    - Tint intensity — the color wash is system-determined
+    - Fade length — the gradient below the bar is not configurable
+    - Minimum deployment target — your app must require **iOS 26 or later**
+  </Tab>
+  <Tab title="ProgressiveBlurHeader">
+    `StickyBlurHeader` is a drop-in SwiftUI view that wraps your header and content. It exposes four parameters for precise control over every aspect of the blur and tint effect.
+
+    ```swift
+    import ProgressiveBlurHeader
+
+    StickyBlurHeader(
+        maxBlurRadius: 10,       // 5 = subtle, 10 = moderate, 20 = strong
+        fadeExtension: 80,       // how far blur extends below header (pt)
+        tintOpacityTop: 0.7,     // tint behind Dynamic Island
+        tintOpacityMiddle: 0.5   // tint at header center
+    ) {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+    } content: {
+        ForEach(items) { item in
+            ItemRow(item: item)
+        }
+    }
+    .background(Color(.systemBackground))
+    ```
+
+    **What you get:**
+    - Full control over `maxBlurRadius`, `fadeExtension`, `tintOpacityTop`, and `tintOpacityMiddle`
+    - Works on **iOS 16 and later** — no need to restrict your deployment target
+    - Adaptive tint that automatically switches between white (light mode) and black (dark mode)
+    - Header height measured automatically via `GeometryReader` — no hardcoded values
+
+    **Trade-offs:**
+    - Requires adding a Swift Package Manager dependency
+    - Uses an obfuscated private API (via VariableBlur) rather than a documented public API
+  </Tab>
+</Tabs>
+
+## Requirements comparison
+
+| | ProgressiveBlurHeader | iOS 26 native |
+|---|---|---|
+| Minimum iOS | **iOS 16** | **iOS 26** |
+| Swift version | Swift 5.9+ | Swift 5.9+ |
+| Blur radius control | Yes — `maxBlurRadius` | No |
+| Tint intensity control | Yes — `tintOpacityTop`, `tintOpacityMiddle` | No |
+| Fade length control | Yes — `fadeExtension` | No |
+| External dependency | Yes — VariableBlur | No |
+| App Store approved | Yes | Yes |
+
+## When to use each
+
+<CardGroup cols={2}>
+  <Card title="Use iOS 26 native when..." icon="wand-magic-sparkles">
+    - Your app already requires iOS 26 or later
+    - Apple's default blur style matches your design
+    - You want zero dependencies and minimal code
+    - Long-term API stability is a priority
+  </Card>
+  <Card title="Use ProgressiveBlurHeader when..." icon="sliders">
+    - You need to support iOS 16 through iOS 25
+    - Your design requires a specific blur radius or tint strength
+    - You want the fade below the header to be longer or shorter than Apple's default
+    - You are building a custom design system that must match a precise visual spec
+  </Card>
+</CardGroup>
+
+<Info>
+  The two approaches are not mutually exclusive. You could use `StickyBlurHeader` today and migrate to `.safeAreaBar(edge: .top)` once you drop support for pre-iOS 26 devices — the API surface is similar enough that the transition would be straightforward.
+</Info>

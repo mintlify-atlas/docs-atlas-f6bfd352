@@ -1,0 +1,132 @@
+---
+title: "Three rules for correct StickyBlurHeader integration"
+description: "Three rules you must follow when using StickyBlurHeader: no opaque header background, no .clipped() in the hierarchy, and how automatic height detection works."
+---
+
+`StickyBlurHeader` works by layering three views in a `ZStack`: a `ScrollView` at the back, a `VariableBlurView` in the middle, and your header on top. This architecture delivers the progressive blur effect, but it also means two things you might reach for instinctively — adding a background to the header, and clipping the view — will silently break the effect. Understanding why each rule exists makes them easy to follow.
+
+<AccordionGroup>
+  <Accordion title="Rule 1: Header must not have an opaque background">
+    <Warning>
+    Do not add `.background(Color.xxx)`, `.background(.regularMaterial)`, or any other opaque background modifier inside the `header:` closure. The `VariableBlurView` sitting behind the header **is** its background. Adding an opaque fill on top hides the blur entirely.
+    </Warning>
+
+    **Why this matters:** The three layers are stacked with `ZStack(alignment: .top)`. Layer 2 (the blur) sits directly behind Layer 3 (your header). If your header carries its own opaque background, that background covers the blur layer and the effect is lost — you get a flat solid header instead.
+
+    **Correct:**
+
+    ```swift
+    StickyBlurHeader {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+        // No .background() here
+    } content: {
+        contentView
+    }
+    .background(Color(.systemBackground)) // background goes on the parent
+    ```
+
+    **Incorrect:**
+
+    ```swift
+    StickyBlurHeader {
+        HStack {
+            Button("Back") { }
+            Spacer()
+            Text("Title").font(.headline)
+            Spacer()
+            Button("Settings") { }
+        }
+        .padding()
+        .background(Color(.systemBackground)) // hides the blur
+    } content: {
+        contentView
+    }
+    ```
+
+    <Note>
+    Using `.background(.ultraThinMaterial)` on individual elements inside the header — such as icon buttons — is fine. Only avoid opaque backgrounds that cover the full header area.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Rule 2: Do not add .clipped() anywhere in the hierarchy">
+    <Warning>
+    Do not add `.clipped()` to the `StickyBlurHeader`, to the `header:` closure, or to the `content:` closure. Clipping severs the blur layer from the scroll content it is supposed to blur, producing a hard edge instead of a progressive fade.
+    </Warning>
+
+    **Why this matters:** The blur effect works by visually overlapping the `ScrollView` content with the `VariableBlurView`. That overlap is intentional. Clipping any part of the hierarchy restricts the region where the blur can render, turning the soft progressive fade into a visible cut-off line.
+
+    **Correct:**
+
+    ```swift
+    StickyBlurHeader {
+        headerView
+    } content: {
+        VStack(spacing: 0) {
+            ForEach(0..<30) { i in
+                rowView(i)
+            }
+        }
+        // No .clipped() here
+    }
+    .background(Color(.systemBackground))
+    // No .clipped() here either
+    ```
+
+    **Incorrect:**
+
+    ```swift
+    StickyBlurHeader {
+        headerView
+    } content: {
+        VStack(spacing: 0) {
+            ForEach(0..<30) { i in
+                rowView(i)
+            }
+        }
+        .clipped() // breaks the blur fade
+    }
+    .background(Color(.systemBackground))
+    ```
+  </Accordion>
+
+  <Accordion title="Rule 3: Header height is measured automatically — do not hard-code it">
+    Header height is detected at runtime using a `GeometryReader` embedded in the header layer, reporting back through SwiftUI's `PreferenceKey` system. You do not need to supply a fixed height, and doing so is not possible through the public API.
+
+    **How it works internally:**
+
+    ```swift
+    // Inside StickyBlurHeader.body
+    header()
+        .overlay {
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: HeaderHeightKey.self,
+                    value: geo.size.height
+                )
+            }
+        }
+
+    // ...
+
+    .onPreferenceChange(HeaderHeightKey.self) { headerHeight = $0 }
+    ```
+
+    The measured height drives two things:
+
+    1. **Blur layer sizing** — `VariableBlurView` is sized to `headerHeight + fadeExtension`, so the fade always starts at the bottom edge of the header regardless of its actual height.
+    2. **Scroll content offset** — A transparent `safeAreaInset(edge: .top)` of height `headerHeight` is inserted so the first row of content is visible below the header on initial load.
+
+    Because the height is stored in `@State`, it updates automatically if your header changes size at runtime — for example, when toggling a search bar or expanding a subtitle line.
+
+    <Info>
+    The `@State private var headerHeight: CGFloat` is initialized to `76`, which is a reasonable fallback for the first render frame before the `PreferenceKey` fires. You will not see a layout jump in practice.
+    </Info>
+  </Accordion>
+</AccordionGroup>

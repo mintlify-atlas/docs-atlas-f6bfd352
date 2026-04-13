@@ -1,0 +1,159 @@
+---
+title: "Using StickyBlurHeader: closures, layout, and height"
+description: "Learn how to add a sticky progressive blur header to any SwiftUI view using the two trailing closures and a single background modifier."
+---
+
+`StickyBlurHeader` is a drop-in SwiftUI view that gives you a sticky header with a progressive blur effect — the same visual style used in Apple Music, Photos, and the App Store. Setting it up requires nothing more than two trailing closures and one `.background()` modifier on the parent view.
+
+## Minimal working example
+
+The snippet below is the smallest complete usage of `StickyBlurHeader`. Import the package, wrap your header and content in the two closures, and attach `.background()` to the outer view — not to the header itself.
+
+```swift
+import ProgressiveBlurHeader
+
+struct MyView: View {
+    var body: some View {
+        StickyBlurHeader {
+            // header — NO opaque background
+            HStack {
+                Button("Back") { }
+                Spacer()
+                Text("Title").font(.headline)
+                Spacer()
+                Button("Settings") { }
+            }
+            .padding()
+        } content: {
+            // scrollable content
+            ForEach(items) { item in
+                ItemRow(item: item)
+            }
+        }
+        .background(Color(.systemBackground))
+    }
+}
+```
+
+## Understanding the two closures
+
+`StickyBlurHeader` takes two `@ViewBuilder` trailing closures that map directly to two layers in an internal `ZStack`.
+
+<CardGroup cols={2}>
+  <Card title="header:" icon="rectangle-stack">
+    The sticky bar that floats at the top of the screen. It must not carry an opaque background — the progressive blur view underneath acts as its background.
+  </Card>
+  <Card title="content:" icon="list-bullet">
+    Everything that scrolls. This is placed inside a `ScrollView` and padded at the top by the measured header height so the first row is never hidden on load.
+  </Card>
+</CardGroup>
+
+## Where to put `.background()`
+
+<Warning>
+Do not add `.background()` inside the `header:` closure. Place it on the `StickyBlurHeader` view itself (or on a containing view). Adding an opaque background to the header hides the blur effect entirely.
+</Warning>
+
+The correct pattern is:
+
+```swift
+StickyBlurHeader {
+    headerView   // no .background() here
+} content: {
+    contentView
+}
+.background(Color(.systemBackground))  // here, on the parent
+```
+
+## Automatic header height detection
+
+You do not need to pass a fixed height. `StickyBlurHeader` measures the height of the `header:` closure at runtime using a `GeometryReader` combined with a custom `PreferenceKey` (`HeaderHeightKey`). The measured value is stored in `@State` and used in two places:
+
+- To size the `VariableBlurView` layer (`headerHeight + fadeExtension`)
+- To insert a transparent `safeAreaInset` at the top of the `ScrollView` so content starts below the header
+
+Because this relies on SwiftUI's preference system, the height updates automatically if your header changes size — for example, when switching between compact and expanded states.
+
+## Preview examples from source
+
+The library ships with two `#Preview` targets that demonstrate the component in both color schemes. Use them as a starting point.
+
+<Tabs>
+  <Tab title="Light mode">
+    ```swift
+    #Preview("Light") {
+        StickyBlurHeader {
+            HStack {
+                Circle().fill(.ultraThinMaterial).frame(width: 44, height: 44)
+                Spacer()
+                Text("Header").font(.headline)
+                Spacer()
+                Circle().fill(.ultraThinMaterial).frame(width: 44, height: 44)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        } content: {
+            VStack(spacing: 0) {
+                ForEach(0..<30) { i in
+                    HStack {
+                        Circle()
+                            .fill(Color(hue: Double(i) / 30, saturation: 0.6, brightness: 0.9))
+                            .frame(width: 44, height: 44)
+                        VStack(alignment: .leading) {
+                            Text("Item \(i)").font(.body.bold())
+                            Text("Scroll to see the blur effect").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    Divider().padding(.leading, 76)
+                }
+            }
+        }
+        .background(Color(.systemBackground))
+    }
+    ```
+  </Tab>
+  <Tab title="Dark mode">
+    ```swift
+    #Preview("Dark") {
+        StickyBlurHeader(maxBlurRadius: 10) {
+            HStack {
+                Circle().fill(.ultraThinMaterial).frame(width: 44, height: 44)
+                Spacer()
+                Text("Header").font(.headline)
+                Spacer()
+                Circle().fill(.ultraThinMaterial).frame(width: 44, height: 44)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        } content: {
+            VStack(spacing: 0) {
+                ForEach(0..<30) { i in
+                    HStack {
+                        Circle()
+                            .fill(Color(hue: Double(i) / 30, saturation: 0.6, brightness: 0.9))
+                            .frame(width: 44, height: 44)
+                        VStack(alignment: .leading) {
+                            Text("Item \(i)").font(.body.bold())
+                            Text("Scroll to see the blur effect").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    Divider().padding(.leading, 76)
+                }
+            }
+        }
+        .background(Color(.systemBackground))
+        .preferredColorScheme(.dark)
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+The dark preview passes `maxBlurRadius: 10` to demonstrate a moderately stronger blur. All other parameters remain at their defaults. See the [Customization](/usage/customization) page for the full parameter reference.
+</Note>

@@ -1,80 +1,94 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quickstart: add StickyBlurHeader to your SwiftUI app"
+description: "Add a native-quality progressive blur sticky header to your SwiftUI app in under five minutes, from package install to working UI."
 ---
 
-## Get started in three steps
+ProgressiveBlurHeader is designed to get you from zero to a working progressive blur header as fast as possible. The entire integration is a single `StickyBlurHeader` view — you provide two `@ViewBuilder` closures and it handles the rest. This guide walks you through the complete setup.
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Add the package">
+    Open your project in Xcode and go to **File → Add Package Dependencies**. Paste the repository URL:
 
-### Step 1: Set up your local environment
+    ```
+    https://github.com/dominikmartn/ProgressiveBlurHeader
+    ```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    Select **Branch: main** and click **Add Package**. Xcode will resolve the package and its `VariableBlur` dependency automatically.
 
-### Step 2: Deploy your changes
+    <Info>
+      Prefer `Package.swift`? See the [Installation](/installation) page for the dependency declaration.
+    </Info>
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Import the module">
+    At the top of the Swift file where you want the header, add the import:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```swift
+    import ProgressiveBlurHeader
+    ```
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Wrap your views in StickyBlurHeader">
+    Replace your existing `ScrollView` or top-level view with `StickyBlurHeader`. Pass your navigation bar content as the `header` closure and your list or scroll content as the `content` closure:
 
-### Step 3: Go live
+    ```swift
+    import SwiftUI
+    import ProgressiveBlurHeader
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    struct MyView: View {
+        var body: some View {
+            StickyBlurHeader {
+                // Your header — NO opaque background!
+                HStack {
+                    Button("Back") { }
+                    Spacer()
+                    Text("Title").font(.headline)
+                    Spacer()
+                    Button("Settings") { }
+                }
+                .padding()
+            } content: {
+                // Your scrollable content
+                ForEach(0..<30) { i in
+                    Text("Item \(i)")
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                    Divider()
+                }
+            }
+            .background(Color(.systemBackground))
+        }
+    }
+    ```
+
+    <Warning>
+      The header closure must **not** have an opaque background (e.g. `.background(Color.blue)`). The `VariableBlurView` in the middle layer is the background. Adding an opaque background to the header hides the blur effect entirely.
+    </Warning>
+  </Step>
+
+  <Step title="Set a background on the parent view">
+    Apply `.background()` on the `StickyBlurHeader` itself (not on the header closure). This sets the canvas color that shows through the blur. For most apps, `Color(.systemBackground)` is the right choice — it adapts automatically to light and dark mode.
+
+    ```swift
+    StickyBlurHeader { ... } content: { ... }
+        .background(Color(.systemBackground))
+    ```
+  </Step>
+</Steps>
+
+## Result
+
+Your content now scrolls freely underneath the sticky header. As items pass behind it they become increasingly blurred and tinted — the blur is strongest at the top (behind the Dynamic Island and status bar) and fades to clear just below the header edge.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+The default parameters give you a subtle, Apple-like effect. When you're ready to fine-tune it:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Customization" icon="sliders" href="/usage/customization">
+    Adjust blur radius, fade length, and tint opacity
+  </Card>
+  <Card title="Important rules" icon="triangle-exclamation" href="/usage/important-rules">
+    Avoid the three common mistakes that break the effect
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

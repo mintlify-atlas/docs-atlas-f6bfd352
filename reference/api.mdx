@@ -1,0 +1,143 @@
+---
+title: "StickyBlurHeader API reference: parameters and types"
+description: "Complete parameter reference for StickyBlurHeader — all six init parameters with types, defaults, and behavior, plus platform requirements and usage examples."
+---
+
+`StickyBlurHeader` is the single public type exported by ProgressiveBlurHeader. It is a generic SwiftUI `View` that composes a scrollable content layer, a progressive blur and tint layer, and a floating header layer into a single drop-in component.
+
+## Import
+
+```swift
+import ProgressiveBlurHeader
+```
+
+## Platform requirements
+
+- **iOS 16+** — declared in `Package.swift` via `.iOS(.v16)`
+- **Swift 5.9+** — required by `swift-tools-version: 5.9`
+
+## Type declaration
+
+```swift
+public struct StickyBlurHeader<Header: View, Content: View>: View
+```
+
+`Header` and `Content` are inferred from the view builder closures you provide — you never need to specify them explicitly.
+
+## Initializer
+
+```swift
+public init(
+    maxBlurRadius: CGFloat = 5,
+    fadeExtension: CGFloat = 64,
+    tintOpacityTop: Double = 0.7,
+    tintOpacityMiddle: Double = 0.5,
+    @ViewBuilder header: @escaping () -> Header,
+    @ViewBuilder content: @escaping () -> Content
+)
+```
+
+All four numeric parameters are optional and have sensible defaults. The two view builder parameters are required.
+
+## Parameters
+
+<ParamField path="maxBlurRadius" type="CGFloat" default="5">
+  Maximum blur intensity applied at the very top edge of the screen. The blur fades progressively toward zero at the bottom edge of the blur region.
+
+  - `5` — subtle, close to Apple's default treatment
+  - `10` — moderate, clearly visible blur
+  - `20` — strong, heavily frosted effect
+
+  Increase this when your content has high-contrast elements that need to be more obscured beneath the header.
+</ParamField>
+
+<ParamField path="fadeExtension" type="CGFloat" default="64">
+  How far below the header's bottom edge the blur continues, in points. A larger value creates a softer, more gradual transition from blurred to fully clear content.
+
+  The total height of the blur layer is `headerHeight + fadeExtension`. Increase this value if the blur cutoff looks abrupt at the header boundary.
+</ParamField>
+
+<ParamField path="tintOpacityTop" type="Double" default="0.7">
+  Opacity of the tint color at the very top of the screen — the region behind the Dynamic Island and status bar. In light mode the tint is white; in dark mode it is black. The color scheme is read from the environment automatically.
+
+  Values closer to `1.0` make the top region more opaque. Values closer to `0.0` make it more transparent, letting blurred content show through with less color wash.
+</ParamField>
+
+<ParamField path="tintOpacityMiddle" type="Double" default="0.5">
+  Opacity of the tint color at the header's vertical center. Combined with `tintOpacityTop`, these two stops define the linear gradient that fades from fully tinted at the top to fully transparent below the blur region.
+
+  Lowering this value while keeping `tintOpacityTop` high creates a steeper fade. Raising both values together produces a more uniformly tinted region.
+</ParamField>
+
+<ParamField path="header" type="() -> Header">
+  A `@ViewBuilder` closure that returns your header content. This view floats above the blur layer with no background of its own — the `VariableBlurView` behind it acts as the visual background.
+
+  <Warning>
+    Do not add an opaque `.background()` to the header view. Doing so covers the blur layer entirely, making the effect invisible. Use `.ultraThinMaterial` or transparent fills if you need a surface behind header controls.
+  </Warning>
+</ParamField>
+
+<ParamField path="content" type="() -> Content">
+  A `@ViewBuilder` closure that returns your scrollable content. This view is placed inside a `ScrollView` on the back layer of the `ZStack`. It is never clipped — content remains fully rendered as it scrolls beneath the blur.
+
+  The scroll view automatically receives a `safeAreaInset` equal to the measured header height, so the first item in your content is not obscured on initial render.
+</ParamField>
+
+## Complete usage example
+
+```swift
+import SwiftUI
+import ProgressiveBlurHeader
+
+struct MyView: View {
+    var body: some View {
+        StickyBlurHeader(
+            maxBlurRadius: 10,
+            fadeExtension: 80,
+            tintOpacityTop: 0.7,
+            tintOpacityMiddle: 0.5
+        ) {
+            // Header — no opaque background
+            HStack {
+                Button("Back") { }
+                Spacer()
+                Text("Title").font(.headline)
+                Spacer()
+                Button("Settings") { }
+            }
+            .padding()
+        } content: {
+            // Scrollable content
+            ForEach(0..<50) { i in
+                Text("Row \(i)").padding()
+            }
+        }
+        .background(Color(.systemBackground))
+    }
+}
+```
+
+<Note>
+  The `.background()` modifier is applied to `StickyBlurHeader` itself, not to the header closure. This gives the scroll view and the blur layer a consistent backdrop color without interfering with the blur effect.
+</Note>
+
+## Header height measurement
+
+Header height is measured automatically using a `GeometryReader` inside an `.overlay` on the header view, combined with a `PreferenceKey` that propagates the value up the view tree. The initial value is `76` points; it updates after the first layout pass.
+
+This means:
+- You do not need to hardcode any height values
+- The blur layer resizes automatically if your header changes height (for example, due to dynamic type size changes)
+- There is one frame where the initial `76pt` default is used before the real height is measured — this is expected behavior
+
+## VariableBlur dependency
+
+`StickyBlurHeader` depends on [VariableBlur](https://github.com/nikstar/VariableBlur) by nikstar. This package is declared as an automatic Swift Package Manager dependency in `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/nikstar/VariableBlur", branch: "main"),
+],
+```
+
+You do not need to add VariableBlur separately to your project. It uses the same obfuscated private API that Apple uses internally for progressive blur in Music, Photos, and the App Store. It has 495+ stars on GitHub and is App Store approved.

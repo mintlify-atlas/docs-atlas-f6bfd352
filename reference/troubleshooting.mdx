@@ -1,0 +1,126 @@
+---
+title: "Fix common StickyBlurHeader problems and visual bugs"
+description: "Solutions for the most common problems with StickyBlurHeader: invisible blur, clipped content, incorrect header height, Dynamic Island issues, and more."
+---
+
+Most issues with `StickyBlurHeader` fall into a small number of categories: the header has an opaque background covering the blur, something is clipping the content layer, or the package itself is not resolving in Xcode. The accordion sections below cover each case with the cause and the fix.
+
+<AccordionGroup>
+  <Accordion title="Blur effect not visible">
+    **Symptom:** The header renders correctly but there is no blur behind it — scrolled content appears sharp beneath a solid or translucent surface.
+
+    **Cause:** The header view has an opaque `.background()` modifier. Because `StickyBlurHeader` places the `VariableBlurView` on a layer _behind_ the header, any opaque fill on the header view covers it entirely.
+
+    **Fix:** Remove `.background()` from the header closure. If you need a visual surface behind header controls, use a material fill on individual elements instead of the header container:
+
+    ```swift
+    StickyBlurHeader {
+        HStack {
+            // Use .ultraThinMaterial on elements, not the HStack
+            Circle()
+                .fill(.ultraThinMaterial)
+                .frame(width: 44, height: 44)
+            Spacer()
+            Text("Title").font(.headline)
+        }
+        .padding()
+        // Do NOT add .background(Color.xxx) here
+    } content: {
+        // ...
+    }
+    ```
+
+    The `.background()` modifier belongs on `StickyBlurHeader` itself, not on the header closure.
+  </Accordion>
+
+  <Accordion title="Content appears clipped">
+    **Symptom:** Scrollable content is cut off at the header boundary instead of blurring through it. Content that scrolls past the header disappears rather than becoming blurred.
+
+    **Cause:** A `.clipped()` modifier exists somewhere in the view hierarchy — either on the content view, on `StickyBlurHeader`, or on a parent container.
+
+    **Fix:** Remove `.clipped()` from the entire hierarchy containing `StickyBlurHeader`. The back layer's `ScrollView` is deliberately unclipped so content remains fully rendered as it passes behind the blur layer. Adding `.clipped()` anywhere in the chain cuts the content before the blur can be applied.
+  </Accordion>
+
+  <Accordion title="Header height seems wrong on first render">
+    **Symptom:** On the very first frame, the header appears at a slightly different height, and the content jump-shifts into position after a brief moment.
+
+    **Cause:** This is expected behavior, not a bug. `StickyBlurHeader` uses a `GeometryReader` inside an `.overlay` on the header view, propagated via a `PreferenceKey`, to measure the header's actual height. The initial `@State` value is `76` points. The real height is read and applied after the first layout pass.
+
+    **What to do:** No action is required. The transition is typically imperceptible. If it is visible in your case, ensure your header does not apply any layout modifiers that might delay its sizing (such as `.onAppear` animations on size).
+  </Accordion>
+
+  <Accordion title="Header height not adapting to dynamic content">
+    **Symptom:** The header has content that changes height at runtime — for example, it expands when a search field becomes active — but the blur layer and scroll offset do not update to match the new height.
+
+    **Cause:** A fixed `.frame(height:)` on the header view prevents `GeometryReader` from measuring the actual height. When the frame is fixed, the preference value never changes, so `headerHeight` stays at its previous value.
+
+    **Fix:** Remove any fixed height frame from the header closure and let `GeometryReader` measure it naturally:
+
+    ```swift
+    StickyBlurHeader {
+        VStack {
+            navigationRow
+            if isSearching {
+                searchField // height varies
+            }
+        }
+        .padding()
+        // No .frame(height: fixedValue) here
+    } content: {
+        // ...
+    }
+    ```
+
+    The `PreferenceKey` propagates the new height whenever the header's intrinsic size changes, and `headerHeight` updates accordingly.
+  </Accordion>
+
+  <Accordion title="Blur not showing behind Dynamic Island">
+    **Symptom:** The blur effect is visible below the Dynamic Island / status bar, but the very top region of the screen (the safe area inset) has no blur or tint.
+
+    **Cause:** The blur layer needs to extend into the top safe area. `StickyBlurHeader` applies `.ignoresSafeArea(edges: .top)` to the `VariableBlurView` layer to achieve this. If something overrides or constrains the blur view's frame before it reaches the safe area, the top region will be unaffected.
+
+    **Fix:** Check `tintOpacityTop` — this parameter controls the tint strength specifically in the top region. If it is set to `0`, the tint behind the Dynamic Island will be invisible even if the blur is rendering:
+
+    ```swift
+    StickyBlurHeader(
+        tintOpacityTop: 0.7 // ensure this is non-zero
+    ) {
+        // ...
+    } content: {
+        // ...
+    }
+    ```
+
+    Also confirm that no parent view applies `.ignoresSafeArea()` in a way that prevents the blur layer from reaching the top of the screen.
+  </Accordion>
+
+  <Accordion title="Package not resolving in Xcode">
+    **Symptom:** Xcode shows a package resolution error, a "no such module" error for `ProgressiveBlurHeader` or `VariableBlur`, or the package hangs on "Resolving package graph."
+
+    **Fixes to try in order:**
+
+    1. Go to **File → Packages → Reset Package Caches** and wait for Xcode to re-resolve all packages.
+    2. Confirm you are pointing at branch `main`, not a version tag. The package does not publish tagged releases — use branch-based resolution:
+
+    ```swift
+    .package(url: "https://github.com/dominikmartn/ProgressiveBlurHeader", branch: "main"),
+    ```
+
+    3. If you added the package via **File → Add Package Dependencies**, verify the URL is exactly `https://github.com/dominikmartn/ProgressiveBlurHeader` and the dependency rule is set to **Branch: main**.
+    4. Quit Xcode, delete `~/Library/Caches/org.swift.swiftpm`, and reopen the project.
+
+    <Note>
+      `VariableBlur` is fetched automatically as a transitive dependency — you do not need to add it manually. If Xcode reports it missing, a full package cache reset (step 1) usually resolves it.
+    </Note>
+  </Accordion>
+
+  <Accordion title="App Store rejection concerns about VariableBlur">
+    **Symptom:** You are concerned that using `VariableBlur` — which accesses the same obfuscated private API that Apple uses internally — will cause your app to be rejected during App Store review.
+
+    **Answer:** `VariableBlur` is App Store approved and in active use across many published apps. It uses the same API surface that Apple itself uses for progressive blur in Music, Photos, and the App Store. The package has 495+ stars on GitHub, indicating widespread adoption in production apps.
+
+    The risk profile is comparable to other community packages that wrap undocumented but widely-observed Apple behavior. If Apple were to block this API in a future OS update, `VariableBlur` would need to be updated — but there is no indication of that happening, and the package is actively maintained.
+
+    If App Store approval is a strict requirement and you cannot accept any dependency on undocumented APIs, the appropriate alternative is iOS 26's `.safeAreaBar(edge: .top)`, which uses only public APIs.
+  </Accordion>
+</AccordionGroup>
